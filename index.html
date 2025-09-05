@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام التحقق من شهادات التطوع</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            direction: rtl;
+            background-color: #F8F8F8;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #FFFFFF;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            border: 1px solid #E0E0E0;
+        }
+        h2 {
+            color: #8B0000;
+            font-size: 26px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #D0D0D0;
+            padding-bottom: 15px;
+        }
+        label {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            text-align: right;
+            color: #555555;
+            font-weight: bold;
+        }
+        input, select {
+            padding: 14px;
+            border: 1px solid #CCCCCC;
+            border-radius: 6px;
+            background-color: #F0F0F0;
+            color: #333333;
+            width: 100%;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        input:focus, select:focus {
+            border-color: #8B0000;
+            outline: none;
+        }
+        button {
+            background-color: #8B0000;
+            color: white;
+            padding: 14px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #555555;
+            transform: translateY(-2px);
+        }
+        #result {
+            margin-top: 30px;
+            text-align: right;
+            border-top: 1px dashed #D0D0D0;
+            padding-top: 25px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #E0E0E0;
+            text-align: center;
+        }
+        th {
+            background-color: #8B0000;
+            color: white;
+            font-weight: bold;
+            text-align: right;
+        }
+        td {
+            background-color: #F8F8F8;
+            color: #333333;
+            text-align: right;
+        }
+        .footer {
+            margin-top: 40px;
+            border-top: 1px solid #E0E0E0;
+            padding-top: 25px;
+            color: #888888;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .logo {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+        .error-message {
+            color: #E74C3C;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .loading-message {
+            color: #3498DB;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>نظام التحقق من شهادات التطوع</h2>
+    <form id="myForm">
+        <label for="branch">اختر الفرع:</label>
+        <select id="branch" name="branch">
+            <option value="الورقة1">الطب البشري</option>
+            <option value="الورقة2">طب الأسنان</option>
+        </select>
+        <label for="serialNumber">أدخل الرقم التسلسلي للشهادة:</label>
+        <input type="text" id="serialNumber" name="serialNumber">
+        <button type="button" onclick="searchCertificate()">تحقق</button>
+    </form>
+    <div id="result"></div>
+    <div class="footer">
+        <img src="https://uploads.onecompiler.io/43vtwgjev/43vtvmvd5/20250219_125938.jpg" alt="HealX Team Logo" class="logo">
+        <p>&copy; 2025 جميع الحقوق محفوظة لفريق HealX.</p>
+    </div>
+</div>
+
+<script>
+    async function searchCertificate() {
+        const branch = document.getElementById("branch").value;
+        const serialNumber = document.getElementById("serialNumber").value;
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "<p class='loading-message'>...جاري التحقق</p>";
+
+        const apiUrl = "https://script.google.com/macros/s/AKfycbyfrHmiP255cjYfyk377D4E2jQSJ82R2F8I-W4QWujbca4BBkQdgoEF9e5HQF7eDuyleg/exec";
+
+        try {
+            const response = await fetch(`${apiUrl}?branch=${encodeURIComponent(branch)}&serialNumber=${encodeURIComponent(serialNumber)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+
+            if (result.status === "success") {
+                const details = result.data;
+                resultDiv.innerHTML = `
+                    <table>
+                        <tr>
+                            <th>الاسم بالعربية</th>
+                            <td>${details[3]}</td>
+                        </tr>
+                        <tr>
+                            <th>الاسم بالإنجليزية</th>
+                            <td>${details[2]}</td>
+                        </tr>
+                        <tr>
+                            <th>الفرع</th>
+                            <td>${details[1]}</td>
+                        </tr>
+                        <tr>
+                            <th>تاريخ التطوع</th>
+                            <td>${details[4]}</td>
+                        </tr>
+                        <tr>
+                            <th>مدة التطوع</th>
+                            <td>${details[5]}</td>
+                        </tr>
+                        <tr>
+                            <th>المادة</th>
+                            <td>${details[6]}</td>
+                        </tr>
+                        <tr>
+                            <th>المهمة</th>
+                            <td>${details[7]}</td>
+                        </tr>
+                    </table>
+                `;
+            } else {
+                resultDiv.innerHTML = "<p class='error-message'>الشهادة غير موجودة أو المعلومات خاطئة.</p>";
+            }
+        } catch (error) {
+            console.error('خطأ في الاتصال:', error);
+            resultDiv.innerHTML = "<p class='error-message'>حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.</p>";
+        }
+    }
+</script>
+
+</body>
+</html>
