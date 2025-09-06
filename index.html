@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام التحقق من شهادات التطوع</title>
+    <title>نظام التحقق من الشهادات</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -127,12 +127,29 @@
             color: #3498DB;
             margin-top: 15px;
         }
+        #qrCodeContainer {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px dashed #D0D0D0;
+        }
+        #qrCodeContainer p {
+            margin-bottom: 10px;
+            color: #555555;
+            font-weight: bold;
+        }
+        canvas {
+            border: 1px solid #E0E0E0;
+            padding: 5px;
+            background-color: #FFF;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>نظام التحقق من شهادات التطوع</h2>
+    <h2>نظام التحقق من الشهادات</h2>
     <form id="myForm">
         <label for="branch">اختر الفرع:</label>
         <select id="branch" name="branch">
@@ -144,23 +161,85 @@
         <button type="button" onclick="searchCertificate()">تحقق</button>
     </form>
     <div id="result"></div>
+    <div id="qrCodeContainer" style="display:none;">
+        <p>مسح رمز QR لمشاركة نتيجة البحث:</p>
+        <canvas id="qrCodeCanvas"></canvas>
+    </div>
+
     <div class="footer">
         <img src="Logo.jpg" alt="HealX Team Logo" class="logo">
         <p>&copy; 2025 جميع الحقوق محفوظة لفريق HealX.</p>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
 <script>
-    async function searchCertificate() {
-        const branch = document.getElementById("branch").value;
-        const serialNumber = document.getElementById("serialNumber").value;
+    // رابط الـ API الذي قدمته
+    const apiUrlScript = "https://script.google.com/macros/s/AKfycbyfrHmiP255cjYfyk377D4E2jQSJ82R2F8I-W4QWujbca4BBkQdgoEF9e5HQF7eDuyleg/exec";
+
+    // دالة لإنشاء وعرض رمز QR
+    function generateQrCode(url) {
+        const qrCanvas = document.getElementById('qrCodeCanvas');
+        new QRious({
+            element: qrCanvas,
+            value: url,
+            size: 200, // حجم رمز QR
+            background: 'white',
+            foreground: '#000000' // لون رمز QR مطابق للأحمر الداكن
+        });
+        document.getElementById('qrCodeContainer').style.display = 'block';
+    }
+
+    async function searchCertificate(autoTrigger = false) {
+        const branchSelect = document.getElementById("branch");
+        const serialNumberInput = document.getElementById("serialNumber");
         const resultDiv = document.getElementById("result");
+        const qrCodeContainer = document.getElementById('qrCodeContainer');
+
+        qrCodeContainer.style.display = 'none'; // إخفاء QR القديم
+
+        let branch = branchSelect.value;
+        let serialNumber = serialNumberInput.value;
+
+        // إذا كان الاستدعاء تلقائيًا (من URL)، نستخدم القيم من URL
+        if (autoTrigger) {
+            const params = new URLSearchParams(window.location.search);
+            const urlSerial = params.get('serial');
+            const urlBranch = params.get('branch');
+
+            if (urlSerial && urlBranch) {
+                serialNumber = urlSerial;
+                branch = urlBranch;
+
+                // تحديث حقول النموذج بالقيم من URL
+                serialNumberInput.value = serialNumber;
+                branchSelect.value = branch;
+                
+                // إذا لم يتم العثور على الفرع في القائمة المنسدلة (مثلاً اسم مختلف)
+                if (branchSelect.value !== branch) {
+                    // يمكنك هنا إضافة خيار "أخرى" أو رسالة خطأ
+                    console.warn(`Branch "${branch}" from URL not found in dropdown. Using default.`);
+                    // أو يمكنك ببساطة استخدام القيمة من URL حتى لو لم تكن في القائمة
+                    // branchSelect.options.add(new Option(branch, branch));
+                    // branchSelect.value = branch;
+                }
+
+            } else {
+                // إذا لم توجد معلمات في URL ولم يكن الاستدعاء يدويًا، نتوقف
+                return;
+            }
+        }
+
+        if (!serialNumber) {
+            resultDiv.innerHTML = "<p class='error-message'>الرجاء إدخال الرقم التسلسلي للشهادة.</p>";
+            return;
+        }
+
         resultDiv.innerHTML = "<p class='loading-message'>...جاري التحقق</p>";
 
-        const apiUrl = "https://script.google.com/macros/s/AKfycbyfrHmiP255cjYfyk377D4E2jQSJ82R2F8I-W4QWujbca4BBkQdgoEF9e5HQF7eDuyleg/exec";
-
         try {
-            const response = await fetch(`${apiUrl}?branch=${encodeURIComponent(branch)}&serialNumber=${encodeURIComponent(serialNumber)}`);
+            const response = await fetch(`${apiUrlScript}?branch=${encodeURIComponent(branch)}&serialNumber=${encodeURIComponent(serialNumber)}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -195,11 +274,16 @@
                             <td>${details[6]}</td>
                         </tr>
                         <tr>
-                            <th>المهمة الأساسية</th>
+                            <th> المهمة الأساسية</th>
                             <td>${details[7]}</td>
                         </tr>
                     </table>
                 `;
+                // بعد عرض النتيجة، ننشئ رابط QR Code
+                const pageUrl = window.location.origin + window.location.pathname;
+                const shareLink = `${pageUrl}?serial=${encodeURIComponent(serialNumber)}&branch=${encodeURIComponent(branch)}`;
+                generateQrCode(shareLink);
+
             } else {
                 resultDiv.innerHTML = "<p class='error-message'>الشهادة غير موجودة أو المعلومات خاطئة.</p>";
             }
@@ -208,6 +292,14 @@
             resultDiv.innerHTML = "<p class='error-message'>حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.</p>";
         }
     }
+
+    // عند تحميل الصفحة، نتحقق مما إذا كانت هناك معلمات في URL
+    window.onload = function() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('serial') && params.has('branch')) {
+            searchCertificate(true); // استدعاء البحث تلقائيًا
+        }
+    };
 </script>
 
 </body>
